@@ -57,3 +57,18 @@ void update_client(int idx, int bytes_received) {
     clients[idx].msg_count++;
     clients[idx].bytes_in += bytes_received;
 }
+
+// PERSON 3: /ping command
+if (strncmp(pkt.command, "/ping", 5) == 0) {
+    printf("PING from client ID=%u\n", clients[idx].client_id);
+
+    packet_t pong = {0};
+    pong.client_id = pkt.client_id;
+    pong.seq_num = pkt.seq_num;
+    pong.is_ack = 1;
+    strcpy(pong.command, "/pong");
+
+    sendto(sockfd, (char*)&pong, sizeof(pong), 0,
+    (struct sockaddr*)&client_addr, addr_len);
+    continue;
+}
