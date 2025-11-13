@@ -57,6 +57,20 @@ void update_client(int idx, int bytes_received) {
     clients[idx].msg_count++;
     clients[idx].bytes_in += bytes_received;
 }
+ // PERSON 3: STATS command (admin only)
+ if (clients[idx].is_admin && strncmp(pkt.command, "STATS", 5) == 0) {
+    printf("\n=== QUICK STATS ===\n");
+    printf("Active clients: %d\n", client_count);
+    printf("Total messages: %d\n", clients[idx].msg_count);
+    printf("==================\n\n");
+
+    packet_t ack = {0};
+    ack.is_ack = 1;
+    strcpy(ack.command, "OK");
+    sendto(sockfd, (char*)&ack, sizeof(ack), 0,
+        (struct sockaddr*)&client_addr, addr_len);
+         continue;
+ }
 
 // PERSON 3: /ping command
 if (strncmp(pkt.command, "/ping", 5) == 0) {
