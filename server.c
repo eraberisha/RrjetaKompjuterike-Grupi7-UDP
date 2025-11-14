@@ -57,6 +57,30 @@ void update_client(int idx, int bytes_received) {
     clients[idx].msg_count++;
     clients[idx].bytes_in += bytes_received;
 }
+
+// Timeout THREADI ktu
+
+DWORD WINAPI timeout_thread(LPVOID arg) {
+    SOCKET sockfd = (SOCKET)arg;
+    (void)sockfd;
+    while (1) {
+        Sleep(5000);
+        time_t now = time(NULL);
+        EnterCriticalSection(&clients_mutex);
+        for (int i = 0; i < client_count; i++) {
+            if (clients[i].active && (now - clients[i].last_seen > TIMEOUT_SEC)) {
+                char ip_str[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, &clients[i].addr.sin_addr, ip_str, INET_ADDRSTRLEN);
+                printf("TIMEOUT: Removing client ID=%u | IP=%s:%d\n",
+                       clients[i].client_id, ip_str, ntohs(clients[i].addr.sin_port));
+                clients[i].active = 0;
+            }
+        }
+        LeaveCriticalSection(&clients_mutex);
+    }
+    return 0;
+}
+
  // PERSON 3: STATS command (admin only)
  if (clients[idx].is_admin && strncmp(pkt.command, "STATS", 5) == 0) {
     printf("\n=== QUICK STATS ===\n");
