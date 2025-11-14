@@ -1,4 +1,10 @@
 #include "common.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <direct.h>
+#include <io.h>
+#include <fcntl.h>
 
 #ifdef _WIN32
     WSADATA wsa;
@@ -79,6 +85,23 @@ DWORD WINAPI timeout_thread(LPVOID arg) {
         LeaveCriticalSection(&clients_mutex);
     }
     return 0;
+}
+
+int main() {
+    SOCKET sockfd;
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t addr_len = sizeof(client_addr);
+    packet_t pkt;
+
+#ifdef _WIN32
+    if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
+        printf("WSAStartup failed: %d\n", WSAGetLastError());
+        return 1;
+    }
+    InitializeCriticalSection(&clients_mutex);
+#endif
+
+    init_server_files();
 }
 
  // PERSON 3: STATS command (admin only)
