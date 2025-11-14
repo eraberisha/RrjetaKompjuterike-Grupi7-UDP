@@ -40,6 +40,36 @@ int main() {
 
     printf("=== USER CLIENT (ID: %u) ===\n", CLIENT_ID);
     printf("Connected to server at 127.0.0.1:%d\n", PORT);
+    printf("Available commands:\n");
+    printf(" /list\n");
+    printf(" /read <filename>\n");
+    printf(" /info <filename>\n");
+    printf(" quit\n");
+    printf("> ");
+
+    char input[256];
+    while (fgets(input, sizeof(input), stdin)) {
+        input[strcspn(input, "\n")] = 0;
+        if (strlen(input) == 0) {
+            printf("> ");
+            continue;
+        }
+        if (strcmp(input, "quit") == 0) break;
+
+        strcpy(pkt.command, input);
+        pkt.is_ack = 0;
+
+        int sent = sendto(sockfd, (char*)&pkt, sizeof(pkt), 0,
+                          (struct sockaddr*)&server_addr, sizeof(server_addr));
+        if (sent == SOCKET_ERROR) {
+            printf("sendto failed: %d\n", WSAGetLastError());
+        } else {
+            printf("[Sent] %s\n", input);
+        }
+
+        pkt.seq_num++;
+        printf("> ");
+    }
 
     closesocket(sockfd);
 #ifdef _WIN32
@@ -47,3 +77,5 @@ int main() {
 #endif
     return 0;
 }
+
+
