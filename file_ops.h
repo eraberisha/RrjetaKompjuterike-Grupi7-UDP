@@ -3,22 +3,20 @@
  #ifndef FILE_OPS_H
  #define FILE_OPS_H 
  
- #include <stdbool.h>
+ #include "common.h"
 
- #define CHUNK_SIZE 1024
- #define FILE_FOLDER "./server_files/"
+ #define CHUNK_SIZE 1024 //Madhesia e bllokut per dergim/lexim fajlli
+ #define FILE_FOLDER "./server_files/" //Folderi ku ruhen fajllat ne server
 
-//Funksionet per komanda 
- void list_files(int client_sock);
- void read_file(int client_sock, char *filename);
- void file_info(int client_sock, char *filename); 
- void search_files(int client_sock, char *text);
+//Funksione per menaxhimin e fajllave nga klientet
+void list_files(SOCKET sockfd, client_info_t *c, struct sockaddr_in *addr, uint32_t seq);
 
- //Upload dhe download
- void handle_upload(int client_sock, char *filename, bool is_admin);
- void handle_download(int client_sock, char *filename);
+void read_file(SOCKET sockfd, client_info_t *c, struct sockaddr_in *addr, uint32_t seq, const char *filename);
 
- //Delete
- void delete_file(int client_sock, char *filename, bool is_admin);
- 
+void delete_file(SOCKET sockfd, client_info_t *c, struct sockaddr_in *addr, uint32_t seq, const char *filename);
+
+void file_info(SOCKET sockfd, client_info_t *c, struct sockaddr_in *addr, uint32_t seq, const char *filename);
+
+void search_files(SOCKET sockfd, client_info_t *c, struct sockaddr_in *addr, uint32_t seq, const char *keyword);
+
  #endif
