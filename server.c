@@ -235,3 +235,10 @@ int main() {
             printf("FROM ID=%u (%s:%d): CMD='%s' | seq=%u\n",
                    clients[idx].client_id, ip_str, ntohs(client_addr.sin_port),
                    pkt.command, pkt.seq_num);
+  
+            if (clients[idx].is_admin && strncmp(pkt.command, "STATS", 5) == 0) {
+                handle_stats(sockfd, &clients[idx], &client_addr);
+            }
+            else if (strncmp(pkt.command, "/ping", 5) == 0) {
+                handle_ping(sockfd, &clients[idx], &pkt, &client_addr);
+            }
