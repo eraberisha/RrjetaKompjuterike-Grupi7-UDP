@@ -63,8 +63,6 @@ void update_client(int idx, int bytes_received) {
     clients[idx].bytes_in += bytes_received;
 }
 
-// Timeout THREADI ktu
-
 DWORD WINAPI timeout_thread(LPVOID arg) {
     (void)arg;
     while (1) {
@@ -84,6 +82,7 @@ DWORD WINAPI timeout_thread(LPVOID arg) {
     }
     return 0;
 }
+
 
 void print_stats_terminal() {
     EnterCriticalSection(&clients_mutex);
@@ -176,7 +175,6 @@ void handle_ping(SOCKET sockfd, client_info_t *c, packet_t *req, struct sockaddr
 }
 
 
-
 int main() {
     SOCKET sockfd;
     struct sockaddr_in server_addr, client_addr;
@@ -213,7 +211,27 @@ int main() {
 
     CreateThread(NULL, 0, timeout_thread, (LPVOID)sockfd, 0, NULL);
     CreateThread(NULL, 0, stats_logger_thread, NULL, 0, NULL);
-}
 
+    while (1) {
+        int n = recvfrom(sockfd, (char*)&pkt, sizeof(pkt), 0,
+                         (struct sockaddr*)&client_addr, &addr_len);
+        if (n == SOCKET_ERROR) {
+            printf("recvfrom error: %d\n", WSAGetLastError());
+            continue;
+        }
 
+        char ip_str[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &client_addr.sin_addr, ip_str, INET_ADDRSTRLEN);
 
+        EnterCriticalSection(&clients_mutex);
+
+        int idx = find_client(&client_addr, addr_len);
+        if (idx == -1 && pkt.client_id != 0) {
+            idx = add_client(&client_addr, addr_len, pkt.client_id, pkt.is_admin);
+        }
+
+        if (idx != -1 && clients[idx].active) {
+            update_client(idx, n);
+            printf("FROM ID=%u (%s:%d): CMD='%s' | seq=%u\n",
+                   clients[idx].client_id, ip_str, ntohs(client_addr.sin_port),
+                   pkt.command, pkt.seq_num);
