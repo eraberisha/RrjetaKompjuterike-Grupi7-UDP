@@ -85,6 +85,29 @@ DWORD WINAPI timeout_thread(LPVOID arg) {
     return 0;
 }
 
+void print_stats_terminal() {
+    EnterCriticalSection(&clients_mutex);
+    printf("\n=== LIVE STATS ==================================\n");
+    printf("Active connections : %d / %d\n", client_count, MAX_CLIENTS);
+    long total_in = 0, total_out = 0;
+    for (int i = 0; i < client_count; i++) {
+        if (clients[i].active) {
+            char ip[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &clients[i].addr.sin_addr, ip, INET_ADDRSTRLEN);
+            printf(" [%u] %-15s:%-5d Msg:%-4d In:%-8ld Out:%-8ld %s\n",
+                   clients[i].client_id, ip, ntohs(clients[i].addr.sin_port),
+                   clients[i].msg_count, clients[i].bytes_in, clients[i].bytes_out,
+                   clients[i].is_admin ? "ADMIN" : "USER");
+            total_in += clients[i].bytes_in;
+            total_out += clients[i].bytes_out;
+        }
+    }
+    printf("Total traffic : %ld bytes in, %ld bytes out\n", total_in, total_out);
+    printf("================================================\n\n");
+    LeaveCriticalSection(&clients_mutex);
+}
+
+
 int main() {
     SOCKET sockfd;
     struct sockaddr_in server_addr, client_addr;
@@ -123,32 +146,5 @@ int main() {
     CreateThread(NULL, 0, stats_logger_thread, NULL, 0, NULL);
 }
 
- // PERSON 3: STATS command (admin only)
- if (clients[idx].is_admin && strncmp(pkt.command, "STATS", 5) == 0) {
-    printf("\n=== QUICK STATS ===\n");
-    printf("Active clients: %d\n", client_count);
-    printf("Total messages: %d\n", clients[idx].msg_count);
-    printf("==================\n\n");
 
-    packet_t ack = {0};
-    ack.is_ack = 1;
-    strcpy(ack.command, "OK");
-    sendto(sockfd, (char*)&ack, sizeof(ack), 0,
-        (struct sockaddr*)&client_addr, addr_len);
-         continue;
- }
 
-// PERSON 3: /ping command
-if (strncmp(pkt.command, "/ping", 5) == 0) {
-    printf("PING from client ID=%u\n", clients[idx].client_id);
-
-    packet_t pong = {0};
-    pong.client_id = pkt.client_id;
-    pong.seq_num = pkt.seq_num;
-    pong.is_ack = 1;
-    strcpy(pong.command, "/pong");
-
-    sendto(sockfd, (char*)&pong, sizeof(pong), 0,
-    (struct sockaddr*)&client_addr, addr_len);
-    continue;
-}
