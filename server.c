@@ -283,3 +283,11 @@ int main() {
 
         LeaveCriticalSection(&clients_mutex);
     }
+cleanup:
+    closesocket(sockfd);
+#ifdef _WIN32
+    DeleteCriticalSection(&clients_mutex);
+    WSACleanup();
+#endif
+    return 0;
+}
