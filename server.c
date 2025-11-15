@@ -134,6 +134,47 @@ void write_stats_to_file() {
     fclose(f);
 }
 
+DWORD WINAPI stats_logger_thread(LPVOID arg) {
+    (void)arg;
+    while (1) {
+        Sleep(STATS_INTERVAL * 1000);
+        print_stats_terminal();
+        write_stats_to_file();
+    }
+    return 0;
+}
+
+void handle_stats(SOCKET sockfd, client_info_t *c, struct sockaddr_in *client_addr) {
+    if (!c->is_admin) {
+        packet_t resp = {0};
+        resp.client_id = c->client_id;
+        resp.is_ack = 1;
+        strcpy(resp.command, "ERROR");
+        strcpy(resp.data, "Only admin can use STATS");
+        sendto(sockfd, (char*)&resp, sizeof(resp), 0, (struct sockaddr*)client_addr, sizeof(*client_addr));
+        return;
+    }
+    print_stats_terminal();
+    packet_t resp = {0};
+    resp.client_id = c->client_id;
+    resp.is_ack = 1;
+    strcpy(resp.command, "STATS_OK");
+    strcpy(resp.data, "Full stats printed in server console");
+    sendto(sockfd, (char*)&resp, sizeof(resp), 0, (struct sockaddr*)client_addr, sizeof(*client_addr));
+}
+
+void handle_ping(SOCKET sockfd, client_info_t *c, packet_t *req, struct sockaddr_in *client_addr) {
+    printf("PING from client ID=%u\n", c->client_id);
+    packet_t pong = {0};
+    pong.client_id = c->client_id;
+    pong.seq_num = req->seq_num;
+    pong.is_ack = 1;
+    strcpy(pong.command, "/pong");
+    strcpy(pong.data, "Server is alive!");
+    sendto(sockfd, (char*)&pong, sizeof(pong), 0, (struct sockaddr*)client_addr, sizeof(*client_addr));
+    c->bytes_out += sizeof(pong);
+}
+
 
 
 int main() {
