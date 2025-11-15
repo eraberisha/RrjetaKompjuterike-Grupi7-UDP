@@ -107,6 +107,34 @@ void print_stats_terminal() {
     LeaveCriticalSection(&clients_mutex);
 }
 
+void write_stats_to_file() {
+    FILE *f = fopen("server_stats.txt", "a");
+    if (!f) return;
+    time_t now = time(NULL);
+    char timestr[64];
+    strftime(timestr, sizeof(timestr), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    EnterCriticalSection(&clients_mutex);
+    fprintf(f, "=== STATS: %s ===\n", timestr);
+    fprintf(f, "Active: %d\n", client_count);
+    fprintf(f, "Clients: ");
+    for (int i = 0; i < client_count; i++) {
+        if (clients[i].active) {
+            char ip[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &clients[i].addr.sin_addr, ip, INET_ADDRSTRLEN);
+            fprintf(f, "%s:%d ", ip, ntohs(clients[i].addr.sin_port));
+        }
+    }
+    long total_in = 0, total_out = 0;
+    for (int i = 0; i < client_count; i++) {
+        total_in += clients[i].bytes_in;
+        total_out += clients[i].bytes_out;
+    }
+    fprintf(f, "\nTraffic: %ld B in, %ld B out\n\n", total_in, total_out);
+    LeaveCriticalSection(&clients_mutex);
+    fclose(f);
+}
+
+
 
 int main() {
     SOCKET sockfd;
