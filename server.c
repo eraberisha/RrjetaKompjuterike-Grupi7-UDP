@@ -242,3 +242,44 @@ int main() {
             else if (strncmp(pkt.command, "/ping", 5) == 0) {
                 handle_ping(sockfd, &clients[idx], &pkt, &client_addr);
             }
+
+            else if (strncmp(pkt.command, "/list", 5) == 0) {
+                list_files(sockfd, &clients[idx], &client_addr, pkt.seq_num);
+            }
+            else if (strncmp(pkt.command, "/read ", 6) == 0) {
+                char *fname = pkt.command + 6;
+                while (*fname == ' ') fname++;
+                read_file(sockfd, &clients[idx], &client_addr, pkt.seq_num, fname);
+            }
+            else if (strncmp(pkt.command, "/delete ", 8) == 0) {
+                char *fname = pkt.command + 8;
+                while (*fname == ' ') fname++;
+                delete_file(sockfd, &clients[idx], &client_addr, pkt.seq_num, fname);
+            }
+            else if (strncmp(pkt.command, "/info ", 6) == 0) {
+                char *fname = pkt.command + 6;
+                while (*fname == ' ') fname++;
+                file_info(sockfd, &clients[idx], &client_addr, pkt.seq_num, fname);
+            }
+            else if (strncmp(pkt.command, "/search ", 8) == 0) {
+                char *kw = pkt.command + 8;
+                while (*kw == ' ') kw++;
+                search_files(sockfd, &clients[idx], &client_addr, pkt.seq_num, kw);
+            }
+            else {
+                packet_t err = {0};
+                err.client_id = clients[idx].client_id;
+                err.seq_num = pkt.seq_num;
+                err.is_ack = 1;
+                strcpy(err.command, "ERROR");
+                strcpy(err.data, "Unknown command");
+                sendto(sockfd, (char*)&err, sizeof(err), 0,
+                       (struct sockaddr*)&client_addr, addr_len);
+            }
+        }
+        else {
+            printf("IGNORED: Unknown or inactive client from %s:%d\n", ip_str, ntohs(client_addr.sin_port));
+        }
+
+        LeaveCriticalSection(&clients_mutex);
+    }
