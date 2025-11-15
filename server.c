@@ -1,13 +1,14 @@
 #include "common.h"
+#include "file_ops.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <direct.h>
 #include <io.h>
-#include <fcntl.h>
 
 #ifdef _WIN32
     WSADATA wsa;
+    #define access _access
 #endif
 
 client_info_t clients[MAX_CLIENTS];
@@ -15,11 +16,11 @@ int client_count = 0;
 CRITICAL_SECTION clients_mutex;
 
 void init_server_files() {
-    #ifdef _WIN32
-        CreateDirectoryA(SERVER_FILES_DIR, NULL);
-    #else
-        mkdir(SERVER_FILES_DIR, 0755);
-    #endif
+#ifdef _WIN32
+    CreateDirectoryA(SERVER_FILES_DIR, NULL);
+#else
+    mkdir(SERVER_FILES_DIR, 0755);
+#endif
 }
 
 int find_client(struct sockaddr_in *addr, socklen_t addr_len) {
@@ -38,7 +39,6 @@ int add_client(struct sockaddr_in *addr, socklen_t addr_len, uint32_t client_id,
         printf("ERROR: Max clients reached (%d)\n", MAX_CLIENTS);
         return -1;
     }
-
     int idx = client_count++;
     clients[idx].addr = *addr;
     clients[idx].addr_len = addr_len;
@@ -54,7 +54,6 @@ int add_client(struct sockaddr_in *addr, socklen_t addr_len, uint32_t client_id,
     inet_ntop(AF_INET, &addr->sin_addr, ip_str, INET_ADDRSTRLEN);
     printf("NEW CLIENT: ID=%u | IP=%s:%d | Admin=%s\n",
            client_id, ip_str, ntohs(addr->sin_port), is_admin ? "YES" : "NO");
-
     return idx;
 }
 
@@ -67,8 +66,7 @@ void update_client(int idx, int bytes_received) {
 // Timeout THREADI ktu
 
 DWORD WINAPI timeout_thread(LPVOID arg) {
-    SOCKET sockfd = (SOCKET)arg;
-    (void)sockfd;
+    (void)arg;
     while (1) {
         Sleep(5000);
         time_t now = time(NULL);
@@ -102,6 +100,27 @@ int main() {
 #endif
 
     init_server_files();
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd == INVALID_SOCKET) {
+        printf("Socket creation failed\n");
+        goto cleanup;
+    }
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(PORT);
+
+    if (bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) == SOCKET_ERROR) {
+        printf("Bind failed: %d\n", WSAGetLastError());
+        goto cleanup;
+    }
+
+    printf("UDP File Server STARTED on 0.0.0.0:%d\n", PORT);
+    printf("Timeout: %ds | Max clients: %d\n\n", TIMEOUT_SEC, MAX_CLIENTS);
+
+    CreateThread(NULL, 0, timeout_thread, (LPVOID)sockfd, 0, NULL);
+    CreateThread(NULL, 0, stats_logger_thread, NULL, 0, NULL);
 }
 
  // PERSON 3: STATS command (admin only)
