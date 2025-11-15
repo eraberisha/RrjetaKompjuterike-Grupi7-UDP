@@ -42,7 +42,6 @@ int main() {
     printf("Available commands:\n");
     printf("  /list\n");
     printf("  /read <filename>\n");
-    printf("  /upload <filename>\n");
     printf("  /download <filename>\n");
     printf("  /delete <filename>\n");
     printf("  /search <keyword>\n");

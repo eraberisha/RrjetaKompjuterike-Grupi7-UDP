@@ -246,8 +246,14 @@ int main() {
             else if (strncmp(pkt.command, "/list", 5) == 0) {
                 list_files(sockfd, &clients[idx], &client_addr, pkt.seq_num);
             }
-            else if (strncmp(pkt.command, "/read ", 6) == 0) {
-                char *fname = pkt.command + 6;
+            else if (strncmp(pkt.command, "/read ", 6) == 0 || 
+                strncmp(pkt.command, "/download ", 10) == 0) {
+                const char *fname;
+                if (strncmp(pkt.command, "/read ", 6) == 0) {
+                    fname = pkt.command + 6;
+                } else {
+                    fname = pkt.command + 10;
+                }
                 while (*fname == ' ') fname++;
                 read_file(sockfd, &clients[idx], &client_addr, pkt.seq_num, fname);
             }

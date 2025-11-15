@@ -25,7 +25,7 @@ int main() {
 
     printf("=== USER CLIENT (ID: %u) – READ ONLY ===\n", USER_ID);
     printf("Allowed: /list | /read file.txt | /ping | quit\n");
-    printf("Blocked: upload, delete, STATS\n");
+    printf("Blocked: delete, STATS\n");
 
     char line[256];
     while (1) {
