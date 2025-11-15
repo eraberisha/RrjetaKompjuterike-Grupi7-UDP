@@ -34,29 +34,43 @@ static void send_resp(SOCKET sockfd, client_info_t *c, struct sockaddr_in *addr,
 
 // Liston fajllat në folderin e serverit
 void list_files(SOCKET sockfd, client_info_t *c, struct sockaddr_in *addr, uint32_t seq) {
+    printf("\n=== [CLIENT %u] REQUESTED /list ===\n", c->client_id);  // CLEAR MARKER
+
     WIN32_FIND_DATAA fd;
     HANDLE hFind;
     char path[MAX_PATH];
-    snprintf(path, sizeof(path), "%s\\*", FILE_FOLDER);
+    snprintf(path, sizeof(path), "%s\\*", SERVER_FILES_DIR);
 
-    char response[PACKET_DATA_SIZE] = "FILES:\n";
-    char *ptr = response + 7;
+    char response[PACKET_DATA_SIZE] = "Files in server:\n";
+    char *ptr = response + 17;
+    int found = 0;
 
     hFind = FindFirstFileA(path, &fd);
     if (hFind == INVALID_HANDLE_VALUE) {
-        send_resp(sockfd, c, addr, seq, "ERROR", "No files or folder error");
-        return;
+        strcat(response, "  (folder empty or error)\n");
+    } else {
+        do {
+            if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                int len = snprintf(ptr, PACKET_DATA_SIZE - (ptr - response), "  • %s\n", fd.cFileName);
+                if (len > 0) ptr += len;
+                found = 1;
+            }
+        } while (FindNextFileA(hFind, &fd) && (ptr - response) < PACKET_DATA_SIZE - 100);
+        FindClose(hFind);
     }
 
-    do {
-        if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-            int len = snprintf(ptr, PACKET_DATA_SIZE - (ptr - response), "  %s\n", fd.cFileName);
-            if (len > 0) ptr += len;
-        }
-    } while (FindNextFileA(hFind, &fd) && (ptr - response) < PACKET_DATA_SIZE - 100);
+    if (!found) strcat(response, "  (no files)\n");
 
-    FindClose(hFind);
-    send_resp(sockfd, c, addr, seq, "LIST_OK", response); // Dërgon listën tek klienti
+    packet_t p = {0};
+    p.client_id = c->client_id;
+    p.seq_num = seq;
+    p.is_ack = 1;
+    strcpy(p.command, "LIST_OK");
+    strncpy(p.data, response, PACKET_DATA_SIZE-1);
+    sendto(sockfd, (char*)&p, sizeof(p), 0, (struct sockaddr*)addr, sizeof(*addr));
+    c->bytes_out += sizeof(p);
+
+    printf("=== /list RESPONSE SENT TO CLIENT %u ===\n\n", c->client_id);  // CLEAR END
 }
 
 // Lexon dhe dërgon përmbajtjen e fajllit te klienti
