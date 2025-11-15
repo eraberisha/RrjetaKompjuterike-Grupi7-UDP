@@ -70,6 +70,32 @@ int main() {
             printf("sendto failed: %d\n", WSAGetLastError());
         } else {
             printf("[Sent] %s\n", input);
+
+            char recv_buf[2048];
+            struct sockaddr_in from;
+            socklen_t from_len = sizeof(from);
+
+            struct timeval tv;
+            tv.tv_sec = 2;
+            tv.tv_usec = 0;
+            setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+
+            int n = recvfrom(sockfd, recv_buf, sizeof(recv_buf), 0,
+                             (struct sockaddr*)&from, &from_len);
+
+            if (n > 0) {
+                packet_t *resp = (packet_t*)recv_buf;
+                printf("\n[SERVER] %s", resp->data);
+                if (strncmp(resp->command, "PART_", 5) == 0) {
+                    printf("   ← File part received\n");
+                }
+                if (strcmp(resp->command, "/pong") == 0) {
+                    printf("\n");
+                }
+            } else {
+                printf("\n[No reply from server]\n");
+            }
+            printf("\n");
         }
 
         pkt.seq_num++;
